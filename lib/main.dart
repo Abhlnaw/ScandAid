@@ -1,6 +1,8 @@
+//very brief testing suite
+
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'services/camera_service.dart'; // Make sure this matches your path
+import 'services/camera_service.dart'; 
 
 void main() {
   runApp(const ScandAidTestApp());
@@ -29,10 +31,7 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
   String? _capturedImagePath;
 
   Future<void> _testCamera() async {
-    // Call the service we just built!
     final String? path = await _cameraService.captureInjuryPhoto();
-    
-    // Update the UI with the temporary path
     setState(() {
       _capturedImagePath = path;
     });
@@ -50,10 +49,8 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
               const Text('✅ Success! Image captured at cache path:', style: TextStyle(fontWeight: FontWeight.bold)),
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                // FIXED: Changed "Center" to "TextAlign.center"
                 child: Text(_capturedImagePath!, style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
               ),
-              // Display the photo directly from its temporary path
               SizedBox(
                 height: 300,
                 child: Image.file(File(_capturedImagePath!)),
