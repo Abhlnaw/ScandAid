@@ -38,7 +38,7 @@ class MlService {
   }
 
   MeasurementData _calculateRealWorldDimensions(Rect bounds) {
-    const double pixelToCmRatio = 0.0264583333; 
+    const double pixelToCmRatio = 0.026; 
 
     double lengthCm = bounds.height * pixelToCmRatio;
     double widthCm = bounds.width * pixelToCmRatio;
@@ -48,8 +48,9 @@ class MlService {
       lengthCm: double.parse(lengthCm.toStringAsFixed(2)),
       widthCm: double.parse(widthCm.toStringAsFixed(2)),
       areaSqCm: double.parse(areaSqCm.toStringAsFixed(2)),
-      depthMm: null,   // for p1 impl
-      volumeCuCm: null // for p2 impl
+      boundingBox: bounds, // rect locations
+      depthMm: null,   
+      volumeCuCm: null 
     );
   }
 }
