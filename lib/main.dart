@@ -34,33 +34,37 @@ class CameraTestScreen extends StatefulWidget {
 class _CameraTestScreenState extends State<CameraTestScreen> {
   final CameraService _cameraService = CameraService();
   final MlService _mlService = MlService();
-  
+
   String? _capturedImagePath;
   MeasurementData? _mlMeasurements;
+  bool? _isBoxAccurate;
   bool _isProcessing = false;
   bool _hasAttemptedScan = false;
 
   Future<void> _handleImageSelection(bool fromCamera) async {
     setState(() {
+      _isBoxAccurate = null;
       _isProcessing = true;
       _mlMeasurements = null;
       _hasAttemptedScan = false;
     });
 
-    final String? path = fromCamera 
+    final String? path = fromCamera
         ? await _cameraService.captureInjuryPhoto()
         : await _cameraService.selectPhotoFromGallery();
 
     if (path == null) {
       setState(() => _isProcessing = false);
-      return; 
+      return;
     }
 
     setState(() {
       _capturedImagePath = path;
     });
 
-    final MeasurementData? metrics = await _mlService.analyzeInjuryContours(path);
+    final MeasurementData? metrics = await _mlService.analyzeInjuryContours(
+      path,
+    );
 
     setState(() {
       _mlMeasurements = metrics;
@@ -85,7 +89,7 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  
+
                   if (_capturedImagePath != null) ...[
                     Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -93,21 +97,27 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                         clipBehavior: Clip.antiAlias,
                         elevation: 4,
                         child: FutureBuilder<Size>(
-                          future: _getImageDimensions(File(_capturedImagePath!)),
+                          future: _getImageDimensions(
+                            File(_capturedImagePath!),
+                          ),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return const SizedBox(
                                 height: 200,
-                                child: Center(child: CircularProgressIndicator()),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               );
                             }
-                            
+
                             final Size imageSize = snapshot.data!;
-                            
+
                             return LayoutBuilder(
                               builder: (context, constraints) {
-                                final double scaleX = constraints.maxWidth / imageSize.width;
-                                final double displayHeight = imageSize.height * scaleX;
+                                final double scaleX =
+                                    constraints.maxWidth / imageSize.width;
+                                final double displayHeight =
+                                    imageSize.height * scaleX;
 
                                 return SizedBox(
                                   width: constraints.maxWidth,
@@ -120,17 +130,35 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                                         height: displayHeight,
                                         fit: BoxFit.fill,
                                       ),
-                                      
+
                                       if (_mlMeasurements != null)
                                         Positioned(
-                                          left: _mlMeasurements!.boundingBox.left * scaleX,
-                                          top: _mlMeasurements!.boundingBox.top * scaleX,
-                                          width: _mlMeasurements!.boundingBox.width * scaleX,
-                                          height: _mlMeasurements!.boundingBox.height * scaleX,
+                                          left:
+                                              _mlMeasurements!
+                                                  .boundingBox
+                                                  .left *
+                                              scaleX,
+                                          top:
+                                              _mlMeasurements!.boundingBox.top *
+                                              scaleX,
+                                          width:
+                                              _mlMeasurements!
+                                                  .boundingBox
+                                                  .width *
+                                              scaleX,
+                                          height:
+                                              _mlMeasurements!
+                                                  .boundingBox
+                                                  .height *
+                                              scaleX,
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              border: Border.all(color: Colors.greenAccent, width: 3.5),
-                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: Colors.greenAccent,
+                                                width: 3.5,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                             ),
                                           ),
                                         ),
@@ -156,13 +184,15 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                     ),
                   ],
 
-                  if (_isProcessing) 
+                  if (_isProcessing)
                     const Padding(
                       padding: EdgeInsets.all(16.0),
                       child: CircularProgressIndicator(),
                     ),
 
-                  if (_hasAttemptedScan && _mlMeasurements == null && !_isProcessing)
+                  if (_hasAttemptedScan &&
+                      _mlMeasurements == null &&
+                      !_isProcessing)
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Card(
@@ -171,7 +201,10 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                           padding: EdgeInsets.all(16.0),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.orange,
+                              ),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -195,11 +228,121 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Auto-Contour Data', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
+                              const Text(
+                                'Auto-Contour Data:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.teal,
+                                ),
+                              ),
                               const Divider(),
-                              Text('Est. Length: ${_mlMeasurements!.lengthCm} cm'),
-                              Text('Est. Width: ${_mlMeasurements!.widthCm} cm'),
-                              Text('Calculated Area: ${_mlMeasurements!.areaSqCm} sq cm', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                'Est. Length: ${_mlMeasurements!.lengthCm} cm',
+                              ),
+                              Text(
+                                'Est. Width: ${_mlMeasurements!.widthCm} cm',
+                              ),
+                              Text(
+                                'Calculated Area: ${_mlMeasurements!.areaSqCm} sq cm',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 4.0,
+                      ),
+                      child: Card(
+                        color: _isBoxAccurate == false
+                            ? Colors.red.shade50
+                            : Colors.grey.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Does this bounding box accurately capture the injury?',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              if (_isBoxAccurate == null)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          setState(() => _isBoxAccurate = true),
+                                      icon: const Icon(
+                                        Icons.check,
+                                        color: Colors.green,
+                                      ),
+                                      label: const Text(
+                                        'Yes, Looks Good',
+                                        style: TextStyle(color: Colors.green),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    OutlinedButton.icon(
+                                      onPressed: () => setState(
+                                        () => _isBoxAccurate = false,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.close,
+                                        color: Colors.red,
+                                      ),
+                                      label: const Text(
+                                        'No, Misaligned',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else if (_isBoxAccurate == true)
+                                const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Thank you! Feedback saved.',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Understood. Initiating Checkpoint 4 Custom Clinical Classifier...',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -210,7 +353,7 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
               ),
             ),
           ),
-          
+
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             decoration: BoxDecoration(
@@ -229,19 +372,27 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : () => _handleImageSelection(true),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _handleImageSelection(true),
                       icon: const Icon(Icons.camera_alt),
                       label: const Text('Camera'),
-                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : () => _handleImageSelection(false),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _handleImageSelection(false),
                       icon: const Icon(Icons.photo_library),
                       label: const Text('Gallery'),
-                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ),
                 ],
