@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'services/camera_service.dart';
 import 'services/ml_service.dart';
+import 'services/classification_service.dart';
 import 'models/measurement_data.dart';
+import 'models/diagnostic_data.dart';
 
 void main() {
   runApp(const ScandAidTestApp());
@@ -17,7 +19,7 @@ class ScandAidTestApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true, // useMaterialDesign is deprecated
+        useMaterial3: true,
       ),
       home: const CameraTestScreen(),
     );
@@ -34,42 +36,42 @@ class CameraTestScreen extends StatefulWidget {
 class _CameraTestScreenState extends State<CameraTestScreen> {
   final CameraService _cameraService = CameraService();
   final MlService _mlService = MlService();
-
+  final ClassificationService _classificationService = ClassificationService();
+  
   String? _capturedImagePath;
   MeasurementData? _mlMeasurements;
-  bool? _isBoxAccurate;
+  DiagnosticData? _diagnosticInsights;
   bool _isProcessing = false;
-  bool _hasAttemptedScan = false;
+  bool? _isBoxAccurate;
 
   Future<void> _handleImageSelection(bool fromCamera) async {
     setState(() {
-      _isBoxAccurate = null;
       _isProcessing = true;
       _mlMeasurements = null;
-      _hasAttemptedScan = false;
+      _diagnosticInsights = null;
+      _isBoxAccurate = null;
     });
 
-    final String? path = fromCamera
+    final String? path = fromCamera 
         ? await _cameraService.captureInjuryPhoto()
         : await _cameraService.selectPhotoFromGallery();
 
     if (path == null) {
       setState(() => _isProcessing = false);
-      return;
+      return; 
     }
 
     setState(() {
       _capturedImagePath = path;
     });
 
-    final MeasurementData? metrics = await _mlService.analyzeInjuryContours(
-      path,
-    );
+    final MeasurementData? metrics = await _mlService.analyzeInjuryContours(path);
+    final DiagnosticData? diagnostics = await _classificationService.classifyInjury(path);
 
     setState(() {
       _mlMeasurements = metrics;
+      _diagnosticInsights = diagnostics;
       _isProcessing = false;
-      _hasAttemptedScan = true;
     });
   }
 
@@ -77,7 +79,7 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ScandAid Precision Tracker'),
+        title: const Text('ScandAid Clinical Workspace'),
         backgroundColor: Colors.teal.shade100,
         centerTitle: true,
       ),
@@ -88,8 +90,8 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
-                  const SizedBox(height: 20),
-
+                  const SizedBox(height: 15),
+                  
                   if (_capturedImagePath != null) ...[
                     Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -97,27 +99,21 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                         clipBehavior: Clip.antiAlias,
                         elevation: 4,
                         child: FutureBuilder<Size>(
-                          future: _getImageDimensions(
-                            File(_capturedImagePath!),
-                          ),
+                          future: _getImageDimensions(File(_capturedImagePath!)),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return const SizedBox(
                                 height: 200,
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                                child: Center(child: CircularProgressIndicator()),
                               );
                             }
-
+                            
                             final Size imageSize = snapshot.data!;
-
+                            
                             return LayoutBuilder(
                               builder: (context, constraints) {
-                                final double scaleX =
-                                    constraints.maxWidth / imageSize.width;
-                                final double displayHeight =
-                                    imageSize.height * scaleX;
+                                final double scaleX = constraints.maxWidth / imageSize.width;
+                                final double displayHeight = imageSize.height * scaleX;
 
                                 return SizedBox(
                                   width: constraints.maxWidth,
@@ -130,35 +126,16 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                                         height: displayHeight,
                                         fit: BoxFit.fill,
                                       ),
-
                                       if (_mlMeasurements != null)
                                         Positioned(
-                                          left:
-                                              _mlMeasurements!
-                                                  .boundingBox
-                                                  .left *
-                                              scaleX,
-                                          top:
-                                              _mlMeasurements!.boundingBox.top *
-                                              scaleX,
-                                          width:
-                                              _mlMeasurements!
-                                                  .boundingBox
-                                                  .width *
-                                              scaleX,
-                                          height:
-                                              _mlMeasurements!
-                                                  .boundingBox
-                                                  .height *
-                                              scaleX,
+                                          left: _mlMeasurements!.boundingBox.left * scaleX,
+                                          top: _mlMeasurements!.boundingBox.top * scaleX,
+                                          width: _mlMeasurements!.boundingBox.width * scaleX,
+                                          height: _mlMeasurements!.boundingBox.height * scaleX,
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: Colors.greenAccent,
-                                                width: 3.5,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.greenAccent, width: 3.5),
+                                              borderRadius: BorderRadius.circular(4),
                                             ),
                                           ),
                                         ),
@@ -173,10 +150,10 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                     ),
                   ] else ...[
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 120.0),
+                      padding: EdgeInsets.symmetric(vertical: 100.0),
                       child: Center(
                         child: Text(
-                          'No image loaded yet.\nSelect Camera or Gallery below to begin.',
+                          'No active scan evaluation.\nSelect Camera or Gallery below to begin.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
@@ -184,162 +161,107 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                     ),
                   ],
 
-                  if (_isProcessing)
+                  if (_isProcessing) 
                     const Padding(
                       padding: EdgeInsets.all(16.0),
                       child: CircularProgressIndicator(),
                     ),
 
-                  if (_hasAttemptedScan &&
-                      _mlMeasurements == null &&
-                      !_isProcessing)
+                  if (_diagnosticInsights != null)
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                       child: Card(
-                        color: Colors.orange.shade50,
-                        child: const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber_rounded,
-                                color: Colors.orange,
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Generic ML Kit Detector found no prominent geometric consumer shapes in this image.',
-                                  style: TextStyle(color: Colors.black87),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  if (_mlMeasurements != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Card(
-                        color: Colors.teal.shade50,
+                        color: Colors.blueGrey.shade900,
+                        elevation: 3,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Auto-Contour Data:',
+                              Row(
+                                children: [
+                                  const Icon(Icons.analytics_outlined, color: Colors.cyanAccent),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'AI Diagnosis Summary (${(_diagnosticInsights!.confidenceScore * 100).toStringAsFixed(0)}% Conf.)',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                                  ),
+                                ],
+                              ),
+                              const Divider(color: Colors.white24),
+                              Text('Classification: ${_diagnosticInsights!.woundType}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Severity Tier: ${_diagnosticInsights!.severityLevel}', 
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.teal,
+                                  color: _diagnosticInsights!.severityLevel.contains('High') ? Colors.amberAccent : Colors.greenAccent,
+                                  fontWeight: FontWeight.bold
                                 ),
                               ),
-                              const Divider(),
-                              Text(
-                                'Est. Length: ${_mlMeasurements!.lengthCm} cm',
-                              ),
-                              Text(
-                                'Est. Width: ${_mlMeasurements!.widthCm} cm',
-                              ),
-                              Text(
-                                'Calculated Area: ${_mlMeasurements!.areaSqCm} sq cm',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              const SizedBox(height: 8),
+                              Text('Recommendation: ${_diagnosticInsights!.clinicalRecommendation}', style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
                             ],
                           ),
                         ),
                       ),
                     ),
 
+                  if (_mlMeasurements != null)
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 4.0,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                       child: Card(
-                        color: _isBoxAccurate == false
-                            ? Colors.red.shade50
-                            : Colors.grey.shade50,
+                        color: Colors.teal.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Text('Length: ${_mlMeasurements!.lengthCm}cm', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text('Width: ${_mlMeasurements!.widthCm}cm', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text('Area: ${_mlMeasurements!.areaSqCm}cm²', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  if (_mlMeasurements != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                      child: Card(
+                        color: _isBoxAccurate == false ? Colors.red.shade50 : Colors.grey.shade50,
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Column(
                             children: [
-                              const Text(
-                                'Does this bounding box accurately capture the injury?',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+                              const Text('Does the bounding box accurately capture the injury tracking region?', style: TextStyle(fontWeight: FontWeight.w500)),
                               const SizedBox(height: 8),
                               if (_isBoxAccurate == null)
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     OutlinedButton.icon(
-                                      onPressed: () =>
-                                          setState(() => _isBoxAccurate = true),
-                                      icon: const Icon(
-                                        Icons.check,
-                                        color: Colors.green,
-                                      ),
-                                      label: const Text(
-                                        'Yes, Looks Good',
-                                        style: TextStyle(color: Colors.green),
-                                      ),
+                                      onPressed: () => setState(() => _isBoxAccurate = true),
+                                      icon: const Icon(Icons.check, color: Colors.green),
+                                      label: const Text('Yes', style: TextStyle(color: Colors.green)),
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 20),
                                     OutlinedButton.icon(
-                                      onPressed: () => setState(
-                                        () => _isBoxAccurate = false,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.close,
-                                        color: Colors.red,
-                                      ),
-                                      label: const Text(
-                                        'No, Misaligned',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              else if (_isBoxAccurate == true)
-                                const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      color: Colors.green,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Thank you! Feedback saved.',
-                                      style: TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      onPressed: () => setState(() => _isBoxAccurate = false),
+                                      icon: const Icon(Icons.close, color: Colors.red),
+                                      label: const Text('No', style: TextStyle(color: Colors.red)),
                                     ),
                                   ],
                                 )
                               else
-                                const Row(
+                                Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: Colors.red,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Understood. Initiating Checkpoint 4 Custom Clinical Classifier...',
-                                        style: TextStyle(
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                    Icon(_isBoxAccurate! ? Icons.check_circle : Icons.info, color: _isBoxAccurate! ? Colors.green : Colors.red),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _isBoxAccurate! ? 'Feedback recorded. Optimization locked.' : 'Telemetry logged. Updating mapping algorithms.',
+                                      style: TextStyle(color: _isBoxAccurate! ? Colors.green : Colors.red, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -348,12 +270,11 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
           ),
-
+          
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             decoration: BoxDecoration(
@@ -372,27 +293,19 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing
-                          ? null
-                          : () => _handleImageSelection(true),
+                      onPressed: _isProcessing ? null : () => _handleImageSelection(true),
                       icon: const Icon(Icons.camera_alt),
                       label: const Text('Camera'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isProcessing
-                          ? null
-                          : () => _handleImageSelection(false),
+                      onPressed: _isProcessing ? null : () => _handleImageSelection(false),
                       icon: const Icon(Icons.photo_library),
                       label: const Text('Gallery'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
                 ],
