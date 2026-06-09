@@ -173,33 +173,51 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                       child: Card(
                         color: Colors.blueGrey.shade900,
                         elevation: 3,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.analytics_outlined, color: Colors.cyanAccent),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'AI Diagnosis Summary (${(_diagnosticInsights!.confidenceScore * 100).toStringAsFixed(0)}% Conf.)',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                        clipBehavior: Clip.antiAlias,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            iconColor: Colors.white,
+                            collapsedIconColor: Colors.white70,
+                            title: Row(
+                              children: [
+                                const Icon(Icons.info_outline, color: Colors.cyanAccent),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _diagnosticInsights!.patientSummary,
+                                    style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 15),
                                   ),
-                                ],
-                              ),
-                              const Divider(color: Colors.white24),
-                              Text('Classification: ${_diagnosticInsights!.woundType}', style: const TextStyle(color: Colors.white, fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Severity Tier: ${_diagnosticInsights!.severityLevel}', 
-                                style: TextStyle(
-                                  color: _diagnosticInsights!.severityLevel.contains('High') ? Colors.amberAccent : Colors.greenAccent,
-                                  fontWeight: FontWeight.bold
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text('Recommendation: ${_diagnosticInsights!.clinicalRecommendation}', style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
+                              ],
+                            ),
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                color: Colors.black12,
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('CLINICAL DETAILS', style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    Text('Classification: ${_diagnosticInsights!.woundType}', style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Severity Tier: ${_diagnosticInsights!.severityLevel}', 
+                                      style: TextStyle(
+                                        color: _diagnosticInsights!.severityLevel.contains('High') ? Colors.amberAccent : Colors.greenAccent,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text('Recommendation: ${_diagnosticInsights!.clinicalRecommendation}', style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic)),
+                                    const SizedBox(height: 8),
+                                    Text('AI Confidence: ${(_diagnosticInsights!.confidenceScore * 100).toStringAsFixed(1)}%', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12)),
+                                  ],
+                                ),
+                              )
                             ],
                           ),
                         ),
