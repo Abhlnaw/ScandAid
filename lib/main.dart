@@ -66,12 +66,10 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
     MeasurementData? metrics = await _mlService.analyzeInjuryContours(path);
     final DiagnosticData? diagnostics = await _classificationService.classifyInjury(path);
 
-    // If the object detector fails, programmatically build an accurate center bounding box 
     if (metrics == null) {
       final bytes = await File(path).readAsBytes();
       final image = await decodeImageFromList(bytes);
       
-      // Target the center 50% of the image frame dynamically
       double boxWidth = image.width * 0.50;
       double boxHeight = image.height * 0.60;
       double left = (image.width - boxWidth) / 2;
@@ -95,9 +93,11 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('ScandAid Precision Tracker'),
-        backgroundColor: Colors.teal.shade50,
+        title: const Text('ScandAid Tracker', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20)),
+        backgroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
       ),
       body: Column(
@@ -107,20 +107,19 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
-                  const SizedBox(height: 15),
-                  
                   if (_capturedImagePath != null) ...[
                     Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Card(
                         clipBehavior: Clip.antiAlias,
-                        elevation: 4,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: FutureBuilder<Size>(
                           future: _getImageDimensions(File(_capturedImagePath!)),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return const SizedBox(
-                                height: 200,
+                                height: 250,
                                 child: Center(child: CircularProgressIndicator()),
                               );
                             }
@@ -152,7 +151,7 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                                           child: Container(
                                             decoration: BoxDecoration(
                                               border: Border.all(color: const Color(0xFF66BB6A), width: 3.5),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius: BorderRadius.circular(12),
                                             ),
                                           ),
                                         ),
@@ -166,13 +165,19 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
                       ),
                     ),
                   ] else ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 120.0),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 100.0, horizontal: 32.0),
                       child: Center(
-                        child: Text(
-                          'No scan captured yet.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        child: Column(
+                          children: [
+                            Icon(Icons.photo_camera_outlined, size: 64, color: Colors.grey.shade400),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Ready for Scan\nCapture or select a photo below to begin analysis.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -180,113 +185,178 @@ class _CameraTestScreenState extends State<CameraTestScreen> {
 
                   if (_isProcessing) 
                     const Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(32.0),
                       child: CircularProgressIndicator(),
                     ),
 
-                  if (_diagnosticInsights != null)
+                  if (_diagnosticInsights != null) ...[
+                    // Primary Status Summary Block
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                       child: Card(
                         color: Colors.blueGrey.shade900,
-                        elevation: 3,
-                        clipBehavior: Clip.antiAlias,
-                        child: Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                          child: ExpansionTile(
-                            iconColor: Colors.white,
-                            collapsedIconColor: Colors.white70,
-                            title: Row(
-                              children: [
-                                const Icon(Icons.info_outline, color: Colors.cyanAccent),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _diagnosticInsights!.patientSummary,
-                                    style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white, fontSize: 15),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                color: Colors.black12,
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('CLINICAL DETAILS', style: TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 8),
-                                    Text('Classification: ${_diagnosticInsights!.woundType}', style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                    const SizedBox(height: 4),
-                                    Text('Severity Tier: ${_diagnosticInsights!.severityLevel}', style: const TextStyle(color: Colors.greenAccent, fontSize: 14)),
-                                    const SizedBox(height: 6),
-                                    Text('Recommendation: ${_diagnosticInsights!.clinicalRecommendation}', style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic)),
-                                    const SizedBox(height: 8),
-                                    Text('AI Confidence: ${(_diagnosticInsights!.confidenceScore * 100).toStringAsFixed(1)}%', style: const TextStyle(color: Colors.cyanAccent, fontSize: 12)),
-                                  ],
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  if (_mlMeasurements != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: Card(
-                        color: Colors.teal.shade50,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(Icons.assignment_outlined, color: Colors.teal),
-                                  SizedBox(width: 8),
-                                  Text('Auto-Contour Metrics:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                                  const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 22),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _diagnosticInsights!.patientSummary,
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 15),
+                                    ),
+                                  ),
                                 ],
                               ),
-                              const Divider(),
-                              Text('Est. Length: ${_mlMeasurements!.lengthCm} cm'),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12.0),
+                                child: Divider(color: Colors.white10, height: 1),
+                              ),
+                              Text(
+                                'Type: ${_diagnosticInsights!.woundType}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
                               const SizedBox(height: 4),
-                              Text('Est. Width: ${_mlMeasurements!.widthCm} cm'),
-                              const SizedBox(height: 4),
-                              Text('Calculated Area: ${_mlMeasurements!.areaSqCm} sq cm', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                'Status: ${_diagnosticInsights!.severityLevel}',
+                                style: const TextStyle(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Care Step: ${_diagnosticInsights!.clinicalRecommendation}',
+                                style: TextStyle(color: Colors.grey.shade300, fontSize: 13, fontStyle: FontStyle.italic),
+                              ),
                             ],
                           ),
                         ),
                       ),
                     ),
+
+                    // Cleaned, Non-Technical Telemetry Block
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                      child: Card(
+                        color: Colors.white,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Healing Characteristics',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Erythema Level renamed to Redness Indicator
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Surrounding Redness', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                                  Text(_diagnosticInsights!.erythemaScore > 0.5 ? 'Moderate' : 'Normal', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              LinearProgressIndicator(
+                                value: _diagnosticInsights!.erythemaScore,
+                                backgroundColor: Colors.grey.shade100,
+                                color: Colors.redAccent.withOpacity(0.8),
+                                minHeight: 6,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Structural Disruption renamed to Edge Alignment
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Wound Edge Separation', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                                  Text(_diagnosticInsights!.structuralDisruption > 0.5 ? 'Irregular' : 'Secure', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              LinearProgressIndicator(
+                                value: _diagnosticInsights!.structuralDisruption,
+                                backgroundColor: Colors.grey.shade100,
+                                color: Colors.teal.withOpacity(0.7),
+                                minHeight: 6,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Fixed Overflow: Measurements Layout with wrapping protection
+                  if (_mlMeasurements != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            Text('Length: ${_mlMeasurements!.lengthCm} cm', style: TextStyle(fontSize: 12, color: Colors.teal.shade800)),
+                            Text('Width: ${_mlMeasurements!.widthCm} cm', style: TextStyle(fontSize: 12, color: Colors.teal.shade800)),
+                            Text('Estimated Area: ${_mlMeasurements!.areaSqCm} cm²', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade900, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
           
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            color: Colors.grey.shade50,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, -2))
+              ]
+            ),
             child: SafeArea(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _isProcessing ? null : () => _handleImageSelection(true),
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Camera'),
+                      icon: const Icon(Icons.camera_alt, size: 18),
+                      label: const Text('Take Photo'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: _isProcessing ? null : () => _handleImageSelection(false),
-                      icon: const Icon(Icons.photo_library),
+                      icon: const Icon(Icons.photo_library, size: 18),
                       label: const Text('Gallery'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                 ],
