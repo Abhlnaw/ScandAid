@@ -1,54 +1,75 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
+
 import '../models/measurement_data.dart';
+import 'analysis_engine.dart';
+import 'image_processor.dart';
+import 'logging_service.dart';
 
 class MlService {
-  Future<MeasurementData?> analyzeInjuryContours(String imagePath) async {
-    final modelPath = 'assets/ml/wound_detector.tflite';
-    
-    final options = LocalObjectDetectorOptions(
-      modelPath: modelPath,
-      mode: DetectionMode.single,
-      classifyObjects: true,
-      multipleObjects: false,
-      maximumLabelsPerObject: 1,
-      confidenceThreshold: 0.2, // Lowered threshold to catch subtle tissue boundaries
-    );
+  MlService({
+    AnalysisEngine? analysisEngine,
+    ImageProcessor? imageProcessor,
+    LoggingService? logger,
+  })  : _analysisEngine = analysisEngine ?? AnalysisEngine(),
+        _imageProcessor = imageProcessor ?? ImageProcessor(),
+        _logger = logger ?? LoggingService();
 
-    final objectDetector = ObjectDetector(options: options);
+  final AnalysisEngine _analysisEngine;
+  final ImageProcessor _imageProcessor;
+  final LoggingService _logger;
+
+  static const String _modelPath = 'assets/ml/wound_detector.tflite';
+
+  Future<MeasurementData?> analyzeInjuryContours(
+    String imagePath, {
+    bool skipPreprocess = false,
+  }) async {
+    ObjectDetector? objectDetector;
 
     try {
-      final inputImage = InputImage.fromFilePath(imagePath);
-      final List<DetectedObject> detectedObjects = await objectDetector.processImage(inputImage);
+      final pathForMl = skipPreprocess
+          ? imagePath
+          : (await _imageProcessor.preprocess(imagePath)).processedPath;
 
-      // NO FAKING: If the model doesn't see a distinct boundary, return null
+      final options = LocalObjectDetectorOptions(
+        modelPath: _modelPath,
+        mode: DetectionMode.single,
+        classifyObjects: true,
+        multipleObjects: false,
+        maximumLabelsPerObject: 1,
+        confidenceThreshold: 0.2,
+      );
+
+      objectDetector = ObjectDetector(options: options);
+      final inputImage = InputImage.fromFilePath(pathForMl);
+      final detectedObjects = await objectDetector.processImage(inputImage);
+
       if (detectedObjects.isEmpty) {
-        return null; 
+        _logger.warning('No injury contour detected by ML model');
+        return null;
       }
 
       final primaryObject = detectedObjects.first;
-      return _calculateRealWorldDimensions(primaryObject.boundingBox);
+      final confidence = primaryObject.labels.isNotEmpty
+          ? primaryObject.labels.first.confidence
+          : 0.7;
 
-    } catch (e) {
-      print('Vision Engine Error: $e');
+      final measurements = _analysisEngine.fromBoundingBox(
+        primaryObject.boundingBox,
+        confidence: confidence,
+      );
+
+      if (!_analysisEngine.isValidMeasurement(measurements)) {
+        _logger.warning('ML measurements failed validation');
+        return null;
+      }
+
+      return measurements;
+    } catch (e, stack) {
+      _logger.error('Vision engine error — model may be missing', e, stack);
       return null;
     } finally {
-      objectDetector.close();
+      await objectDetector?.close();
     }
-  }
-
-  MeasurementData _calculateRealWorldDimensions(Rect bounds) {
-    const double pixelToCmRatio = 0.026; 
-    double lengthCm = bounds.height * pixelToCmRatio;
-    double widthCm = bounds.width * pixelToCmRatio;
-    double areaSqCm = lengthCm * widthCm;
-
-    return MeasurementData(
-      lengthCm: double.parse(lengthCm.toStringAsFixed(2)),
-      widthCm: double.parse(widthCm.toStringAsFixed(2)),
-      areaSqCm: double.parse(areaSqCm.toStringAsFixed(2)),
-      boundingBox: bounds,
-    );
   }
 }

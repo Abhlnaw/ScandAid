@@ -49,6 +49,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ScandAid needs camera access to capture injury photos for analysis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ScandAid needs photo library access to select injury images for analysis.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
