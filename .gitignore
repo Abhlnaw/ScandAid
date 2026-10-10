@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local tools, private images, model checkpoints and inference environment
+.tools/
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+models/
+private_data/
+*.pth
+*.pt
+*.safetensors
+.ruff_cache/
