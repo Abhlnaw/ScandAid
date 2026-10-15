@@ -2,6 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a wound photo for your private tracking journal.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Select a wound photo to track changes on this device.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connect to your chosen local ScandAid inference server.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

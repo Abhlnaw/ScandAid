@@ -1,11 +1,11 @@
 {
-    "name": "scandaid",
-    "short_name": "scandaid",
+    "name": "ScandAid",
+    "short_name": "ScandAid",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAFBF7",
+    "theme_color": "#183B38",
+    "description": "Your private wound photo journal.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
