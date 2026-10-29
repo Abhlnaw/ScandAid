@@ -50,8 +50,8 @@ app.*.map.json
 __pycache__/
 .pytest_cache/
 .env
-models/
-private_data/
+/models/
+/private_data/
 *.pth
 *.pt
 *.safetensors
